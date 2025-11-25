@@ -11,12 +11,16 @@ use App\Http\Controllers\Api\PatrolController;
 use App\Http\Controllers\Api\IncidentController;
 
 // صفحة افتراضية (اختياري)
-Route::get('/', function () {
-    return 'Security Guard API is running';
-});
+use Illuminate\Support\Facades\Artisan;
+
 Route::get('/run-migrate', function () {
-    \Artisan::call('migrate', ['--force' => true]);
-    return "Migration done!";
+    try {
+        Artisan::call('migrate', ['--force' => true]);
+        return 'Migrations done!';
+    } catch (\Throwable $e) {
+        return $e->getMessage();
+    }
 });
+
 
   
