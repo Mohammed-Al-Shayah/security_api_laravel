@@ -21,3 +21,4 @@ class InspectorSeeder extends Seeder
         }
     }
 }
+
