@@ -10,15 +10,17 @@ class InspectorSeeder extends Seeder
 {
     public function run(): void
     {
-        $inspectors = User::where('role', 'INSPECTOR')->get();
+        // عدد المفتشين اللي بدك تنشئهم
+        $count = 5;
 
-        foreach ($inspectors as $user) {
+        for ($i = 1; $i <= $count; $i++) {
+
             Inspector::create([
-                'user_id'       => $user->id,
-                'employee_code' => 'INS-' . rand(100, 999),
+                'user_id'       => User::inRandomOrder()->first()->id, // أو عدّلها حسب نظامك
+                'employee_code' => 'INS-' . str_pad($i, 3, '0', STR_PAD_LEFT),
+                // INS-001, INS-002, INS-003, ...
                 'status'        => 'ACTIVE',
             ]);
         }
     }
 }
-
