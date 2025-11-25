@@ -3,8 +3,11 @@ FROM php:8.2-apache
 
 # Install system dependencies + PostgreSQL extension
 RUN apt-get update && apt-get install -y \
-    libzip-dev zip unzip git curl \
-    && docker-php-ext-install pdo pdo_pgsql zip
+    libzip-dev zip unzip git curl libpq-dev \
+    && docker-php-ext-install pdo_pgsql zip \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+
 
 # Enable Apache mod_rewrite
 RUN a2enmod rewrite
