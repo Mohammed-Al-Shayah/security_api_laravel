@@ -36,6 +36,14 @@ use App\Http\Controllers\Api\InspectorMobileController;
 |--------------------------------------------------------------------------
 */
 
+use Illuminate\Support\Facades\Artisan;
+
+Route::get('/run-migrations-EL3b2_iv7', function () {
+    Artisan::call('migrate', ['--force' => true]);
+
+    return '✅ Migrations run successfully';
+});
+
 // ✅ Login
 Route::post('auth/login', [AuthController::class, 'login']);
 
