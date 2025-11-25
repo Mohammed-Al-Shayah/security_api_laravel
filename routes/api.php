@@ -44,6 +44,11 @@ Route::get('/run-migrations-EL3b2_iv7', function () {
     return '✅ Migrations run successfully';
 });
 
+
+Route::get('/health', function () {
+    return 'OK from Laravel ' . app()->version();
+});
+
 // ✅ Login
 Route::post('auth/login', [AuthController::class, 'login']);
 
