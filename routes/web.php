@@ -14,5 +14,9 @@ use App\Http\Controllers\Api\IncidentController;
 Route::get('/', function () {
     return 'Security Guard API is running';
 });
+Route::get('/run-migrate', function () {
+    \Artisan::call('migrate', ['--force' => true]);
+    return "Migration done!";
+});
 
   
