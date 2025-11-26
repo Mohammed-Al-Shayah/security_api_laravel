@@ -8,6 +8,8 @@ use App\Models\Attendance;
 use App\Models\Shift;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use App\Models\Guard; // 👈 أضف هذه
+
 
 class AttendanceController extends Controller
 {
