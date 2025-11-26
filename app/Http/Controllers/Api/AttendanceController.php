@@ -122,163 +122,171 @@ class AttendanceController extends Controller
      *    POST /api/guard/attendance/check-in
      * ========================================================= */
     public function guardCheckIn(Request $request)
-    {
-        try {
-            $user = $request->user();
+{
+    try {
+        $user = $request->user();
 
-            if (! $user) {
-                return $this->fail('No auth user found from token.', 401);
-            }
-
-            if ($user->role !== 'GUARD') {
-                return $this->fail('Only guards can perform check-in.', 403);
-            }
-
-            // نضمن وجود Guard record لهذا اليوزر
-            $guard = GuardModel::firstOrCreate(
-                ['user_id' => $user->id],
-                [
-                    'national_id'  => null,
-                    'badge_number' => null,
-                    'status'       => 'ACTIVE',
-                ]
-            );
-
-            $guardId = $guard->id;
-
-            $data = $request->validate([
-                'shift_id' => 'required|exists:shifts,id',
-                'lat'      => 'nullable|numeric',
-                'lng'      => 'nullable|numeric',
-            ]);
-
-            $shift = Shift::where('id', $data['shift_id'])
-                ->where('guard_id', $guardId)
-                ->first();
-
-            if (! $shift) {
-                return $this->fail('Guard does not belong to this shift.', 422);
-            }
-
-            $attendance = Attendance::firstOrCreate(
-                [
-                    'shift_id' => $shift->id,
-                    'guard_id' => $guardId,
-                ],
-                []
-            );
-
-            if ($attendance->check_in_time) {
-                $attendance->load('shift.project', 'guard.user');
-                return $this->success($attendance, 'Already checked in.');
-            }
-
-            $now = now();
-
-            $attendance->check_in_time = $now;
-            $attendance->check_in_lat  = $data['lat'] ?? null;
-            $attendance->check_in_lng  = $data['lng'] ?? null;
-
-            $shiftStart = Carbon::parse($shift->date.' '.$shift->start_time);
-
-            if ($now->greaterThan($shiftStart->copy()->addMinutes($this->lateToleranceMinutes))) {
-                $attendance->status = 'LATE';
-            } else {
-                $attendance->status = 'ON_TIME';
-            }
-
-            $attendance->save();
-
-            $attendance->load('shift.project', 'guard.user');
-
-            return $this->success($attendance, 'Check-in recorded.');
-        } catch (\Throwable $e) {
-            return $this->fail(
-                'DEBUG ERROR {guardCheckIn}',
-                500,
-                [
-                    'error' => $e->getMessage(),
-                    'file'  => $e->getFile(),
-                    'line'  => $e->getLine(),
-                ]
-            );
+        if (! $user) {
+            return $this->fail('No auth user found from token.', 401);
         }
-    }
 
-    /* =========================================================
-     * 4) Guard Mobile: Check-Out من خلال التوكن
-     *    POST /api/guard/attendance/check-out
-     * ========================================================= */
-    public function guardCheckOut(Request $request)
-    {
-        try {
-            $user = $request->user();
-
-            if (! $user) {
-                return $this->fail('No auth user found from token.', 401);
-            }
-
-            if ($user->role !== 'GUARD') {
-                return $this->fail('Only guards can perform check-out.', 403);
-            }
-
-            $guard = GuardModel::firstOrCreate(
-                ['user_id' => $user->id],
-                [
-                    'national_id'  => null,
-                    'badge_number' => null,
-                    'status'       => 'ACTIVE',
-                ]
-            );
-
-            $guardId = $guard->id;
-
-            $data = $request->validate([
-                'shift_id' => 'required|exists:shifts,id',
-                'lat'      => 'nullable|numeric',
-                'lng'      => 'nullable|numeric',
+        // لازم يكون الدور GUARD
+        if ($user->role !== 'GUARD') {
+            return $this->fail('Only guards can perform check-in.', 403, [
+                'user_id'   => $user->id,
+                'user_role' => $user->role,
             ]);
-
-            $attendance = Attendance::where('shift_id', $data['shift_id'])
-                ->where('guard_id', $guardId)
-                ->first();
-
-            if (! $attendance) {
-                return $this->fail('No check-in found for this shift.', 422);
-            }
-
-            if ($attendance->check_out_time) {
-                $attendance->load('shift.project', 'guard.user');
-                return $this->success($attendance, 'Already checked out.');
-            }
-
-            $shift = $attendance->shift;
-            $now   = now();
-
-            $attendance->check_out_time = $now;
-            $attendance->check_out_lat  = $data['lat'] ?? null;
-            $attendance->check_out_lng  = $data['lng'] ?? null;
-
-            $shiftEnd = Carbon::parse($shift->date.' '.$shift->end_time);
-            if ($now->lessThan($shiftEnd)) {
-                $attendance->status = 'LEFT_EARLY';
-            }
-
-            $attendance->save();
-
-            $attendance->load('shift.project', 'guard.user');
-
-            return $this->success($attendance, 'Check-out recorded.');
-        } catch (\Throwable $e) {
-            return $this->fail(
-                'DEBUG ERROR {guardCheckOut}',
-                500,
-                [
-                    'error' => $e->getMessage(),
-                    'file'  => $e->getFile(),
-                    'line'  => $e->getLine(),
-                ]
-            );
         }
+
+        // مهم: لازم يكون فيه علاقة guard على موديل User
+        // public function guard() { return $this->hasOne(Guard::class); }
+        $guard = $user->guard;
+
+        if (! $guard) {
+            return $this->fail('No guard profile linked to this user.', 422, [
+                'user_id'    => $user->id,
+                'user_email' => $user->email,
+            ]);
+        }
+
+        $guardId = $guard->id;
+
+        $data = $request->validate([
+            'shift_id' => 'required|exists:shifts,id',
+            'lat'      => 'nullable|numeric',
+            'lng'      => 'nullable|numeric',
+        ]);
+
+        // نتأكد أن الشفت لهذا الحارس
+        $shift = Shift::where('id', $data['shift_id'])
+            ->where('guard_id', $guardId)
+            ->first();
+
+        if (! $shift) {
+            return $this->fail('Guard does not belong to this shift.', 422);
+        }
+
+        // نجيب / ننشئ سجل الحضور
+        $attendance = Attendance::firstOrCreate(
+            [
+                'shift_id' => $shift->id,
+                'guard_id' => $guardId,
+            ],
+            []
+        );
+
+        // لو عامل تشيك إن قبل هيك
+        if ($attendance->check_in_time) {
+            $attendance->load('shift.project', 'guard.user');
+            return $this->success($attendance, 'Already checked in.');
+        }
+
+        $now = now();
+
+        $attendance->check_in_time = $now;
+        $attendance->check_in_lat  = $data['lat'] ?? null;
+        $attendance->check_in_lng  = $data['lng'] ?? null;
+
+        $shiftStart = Carbon::parse($shift->date.' '.$shift->start_time);
+
+        if ($now->greaterThan($shiftStart->copy()->addMinutes($this->lateToleranceMinutes))) {
+            $attendance->status = 'LATE';
+        } else {
+            $attendance->status = 'ON_TIME';
+        }
+
+        $attendance->save();
+
+        $attendance->load('shift.project', 'guard.user');
+
+        return $this->success($attendance, 'Check-in recorded.');
+    } catch (\Throwable $e) {
+        return $this->fail(
+            'DEBUG ERROR {guardCheckIn}',
+            500,
+            [
+                'error' => $e->getMessage(),
+                'file'  => $e->getFile(),
+                'line'  => $e->getLine(),
+            ]
+        );
     }
+}
+
+public function guardCheckOut(Request $request)
+{
+    try {
+        $user = $request->user();
+
+        if (! $user) {
+            return $this->fail('No auth user found from token.', 401);
+        }
+
+        if ($user->role !== 'GUARD') {
+            return $this->fail('Only guards can perform check-out.', 403, [
+                'user_id'   => $user->id,
+                'user_role' => $user->role,
+            ]);
+        }
+
+        $guard = $user->guard;
+
+        if (! $guard) {
+            return $this->fail('No guard profile linked to this user.', 422, [
+                'user_id'    => $user->id,
+                'user_email' => $user->email,
+            ]);
+        }
+
+        $guardId = $guard->id;
+
+        $data = $request->validate([
+            'shift_id' => 'required|exists:shifts,id',
+            'lat'      => 'nullable|numeric',
+            'lng'      => 'nullable|numeric',
+        ]);
+
+        $attendance = Attendance::where('shift_id', $data['shift_id'])
+            ->where('guard_id', $guardId)
+            ->first();
+
+        if (! $attendance) {
+            return $this->fail('No check-in found for this shift.', 422);
+        }
+
+        if ($attendance->check_out_time) {
+            $attendance->load('shift.project', 'guard.user');
+            return $this->success($attendance, 'Already checked out.');
+        }
+
+        $shift = $attendance->shift;
+        $now   = now();
+
+        $attendance->check_out_time = $now;
+        $attendance->check_out_lat  = $data['lat'] ?? null;
+        $attendance->check_out_lng  = $data['lng'] ?? null;
+
+        $shiftEnd = Carbon::parse($shift->date.' '.$shift->end_time);
+        if ($now->lessThan($shiftEnd)) {
+            $attendance->status = 'LEFT_EARLY';
+        }
+
+        $attendance->save();
+
+        $attendance->load('shift.project', 'guard.user');
+
+        return $this->success($attendance, 'Check-out recorded.');
+    } catch (\Throwable $e) {
+        return $this->fail(
+            'DEBUG ERROR {guardCheckOut}',
+            500,
+            [
+                'error' => $e->getMessage(),
+                'file'  => $e->getFile(),
+                'line'  => $e->getLine(),
+            ]
+        );
+    }
+}
+
 }
