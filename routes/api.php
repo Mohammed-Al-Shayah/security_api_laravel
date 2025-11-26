@@ -192,7 +192,7 @@ Route::prefix('guard')->group(function () {
     });
 
     Route::get('/create-admin', function () {
-    $user = \App\Models\User::create([
+    $user = User::create([
         'name' => 'Admin',
         'email' => 'admin@security.com',
         'password' => bcrypt('password'),
