@@ -90,12 +90,16 @@ class GuardPatrolController extends Controller
         }
 
         $data = $request->validate([
-            'project_id' => 'required|exists:projects,id',
-            'start_time' => 'required|date',
-            'end_time'   => 'required|date|after_or_equal:start_time',
-            'rating'     => 'nullable|integer|min:1|max:5',
-            'notes'      => 'nullable|string',
+            'project_id' => ['required', 'exists:projects,id'],
+            'date'       => ['required', 'date_format:Y-m-d'],      // نفس اللي بتبعتو
+            'start_time' => ['required', 'date_format:H:i:s'],
+            'end_time'   => ['required', 'date_format:H:i:s', 'after:start_time'],
+            'rating'     => ['nullable', 'integer', 'min:1', 'max:5'],
+            'notes'      => ['nullable', 'string'],
         ]);
+
+
+
 
         $patrol = Patrol::create([
             'inspector_id' => null,               // حالياً مش بنستخدمه من الموبايل
