@@ -58,18 +58,29 @@ Route::post('auth/login', [AuthController::class, 'login']);
 
 // ✅ إنشاء أدمن (راوت مؤقت – امسحه بعد ما تخلّص)
 Route::get('create-admin', function () {
-    $user = User::firstOrCreate(
-        ['email' => 'admin@security.com'],
-        [
-            'name'     => 'Admin',
-            'password' => Hash::make('password'),
-            'role'     => 'admin', // عدّلها لو عندك عمود مختلف
-        ]
-    );
+    try {
+        $user = User::updateOrCreate(
+            ['email' => 'admin@security.com'],
+            [
+                'name'     => 'Admin',
+                'password' => Hash::make('password'),
+                // لو عندك أعمدة إلزامية ثانية (مثلاً type)
+                // ضيفها هنا مثلاً:
+                // 'type' => 'admin',
+            ]
+        );
 
-    return $user;
+        return response()->json([
+            'status' => 'ok',
+            'user'   => $user,
+        ]);
+    } catch (\Throwable $e) {
+        return response()->json([
+            'status'  => 'error',
+            'message' => $e->getMessage(),
+        ], 500);
+    }
 });
-
 /*
 |--------------------------------------------------------------------------
 | Protected API Routes (بعد الـ Login)
