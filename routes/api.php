@@ -34,6 +34,8 @@ use App\Http\Controllers\Api\InspectorMobileController;
 
 // Models
 use App\Models\User;
+use App\Models\IncidentType;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -73,6 +75,26 @@ Route::post('auth/login', [AuthController::class, 'login']);
 //         'user'   => $user,
 //     ]);
 // });
+
+
+Route::get('seed-incident-types', function () {
+    $types = [
+        'Gate issue',
+        'Suspicious activity',
+        'Technical problem',
+    ];
+
+    foreach ($types as $name) {
+        IncidentType::firstOrCreate(['name' => $name]);
+    }
+
+    return response()->json([
+        'status' => 'ok',
+        'count'  => IncidentType::count(),
+        'items'  => IncidentType::all(),
+    ]);
+});
+
 
 /*
 |--------------------------------------------------------------------------
