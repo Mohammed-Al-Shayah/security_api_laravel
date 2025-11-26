@@ -127,34 +127,36 @@ class AttendanceController extends Controller
      *    البودي: { "shift_id": 5, "lat": .., "lng": .. }
      * ========================================================= */
     public function guardCheckIn(Request $request)
-{
-    try {
+    {
         $user = $request->user();
 
-        // 1) تأكدنا إن فيه يوزر من التوكن
+        // 1) لازم يكون في يوزر من التوكن
         if (! $user) {
             return $this->fail('No auth user found from token.', 401);
         }
 
-        // 2) تأكدنا إن هذا اليوزر عنده Guard مربوط
+        // 2) لازم يكون هذا اليوزر Guard
         if (! $user->guard) {
-            return $this->fail([
-                'reason'     => 'user_has_no_guard_relation',
-                'user_id'    => $user->id,
-                'user_email' => $user->email,
-            ], 403);
+            return $this->fail(
+                'Only guards can perform check-in.',
+                403,
+                [
+                    'user_id'    => $user->id,
+                    'user_email' => $user->email,
+                ]
+            );
         }
 
         $guardId = $user->guard->id;
 
-        // 3) Validate الريكوست
+        // 3) Validate
         $data = $request->validate([
             'shift_id' => 'required|exists:shifts,id',
             'lat'      => 'nullable|numeric',
             'lng'      => 'nullable|numeric',
         ]);
 
-        // 4) نتأكد إن الشفت فعلاً لهذا الحارس
+        // 4) نتأكد إن الشيفت فعلاً لهذا الحارس
         $shift = Shift::where('id', $data['shift_id'])
             ->where('guard_id', $guardId)
             ->first();
@@ -178,7 +180,7 @@ class AttendanceController extends Controller
             return $this->success($attendance, 'Already checked in.');
         }
 
-        // 6) نسجّل بيانات التشيك إن
+        // 6) نسجّل التشيك إن
         $now = now();
 
         $attendance->check_in_time = $now;
@@ -198,18 +200,7 @@ class AttendanceController extends Controller
         $attendance->load('shift.project', 'guard.user');
 
         return $this->success($attendance, 'Check-in recorded.');
-
-    } catch (\Throwable $e) {
-        // 👇 هذا اللي يمنع "Server Error" ويطلع لك الخطأ الحقيقي
-        return response()->json([
-            'message' => 'DEBUG ERROR (guardCheckIn)',
-            'error'   => $e->getMessage(),
-            'file'    => $e->getFile(),
-            'line'    => $e->getLine(),
-        ], 500);
     }
-}
-
 
     /* =========================================================
      * 4) Guard Mobile: Check-Out من خلال التوكن
@@ -220,8 +211,19 @@ class AttendanceController extends Controller
     {
         $user = $request->user();
 
-        if (! $user || ! $user->guard) {
-            return $this->fail('Only guards can perform check-out.', 403);
+        if (! $user) {
+            return $this->fail('No auth user found from token.', 401);
+        }
+
+        if (! $user->guard) {
+            return $this->fail(
+                'Only guards can perform check-out.',
+                403,
+                [
+                    'user_id'    => $user->id,
+                    'user_email' => $user->email,
+                ]
+            );
         }
 
         $guardId = $user->guard->id;
