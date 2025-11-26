@@ -106,7 +106,7 @@ Route::middleware('auth:sanctum')->group(function () {
     |---------------------- Guards ------------------------
     */
     Route::get('guards',                 [GuardController::class, 'index']);
-    Route::post('guards',                [GuardController::class, 'storeWithUser']); // guard + user
+    Route::post('guards', [GuardController::class, 'store']); // guard + user
     Route::get('guards/{guard}',         [GuardController::class, 'show']);
     Route::put('guards/{guard}',         [GuardController::class, 'update']);
     Route::delete('guards/{guard}',      [GuardController::class, 'deactivate']); // deactivate guard
