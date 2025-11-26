@@ -128,13 +128,25 @@ class AttendanceController extends Controller
      * ========================================================= */
     public function guardCheckIn(Request $request)
     {
-        $user = $request->user();
+       $user = $request->user();
 
-        if (! $user || ! $user->guard) {
-            return $this->fail('Only guards can perform check-in.', 403);
-        }
+    if (! $user) {
+        // ما في يوزر من التوكن
+        return $this->fail([
+            'reason' => 'no_user_from_token',
+        ], 401);
+    }
 
-        $guardId = $user->guard->id;
+    if (! $user->guard) {
+        // اليوزر موجود، بس ما إله Guard مربوط
+        return $this->fail([
+            'reason'     => 'user_has_no_guard_relation',
+            'user_id'    => $user->id,
+            'user_email' => $user->email,
+        ], 403);
+    }
+
+    $guardId = $user->guard->id;
 
         $data = $request->validate([
             'shift_id' => 'required|exists:shifts,id',
