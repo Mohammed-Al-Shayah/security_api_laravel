@@ -57,21 +57,7 @@ Route::post('auth/login', [AuthController::class, 'login']);
 | Protected API Routes (بعد الـ Login)
 |--------------------------------------------------------------------------
 */
-use App\Models\User;
-use Illuminate\Support\Facades\Hash;
-Route::get('create-admin', function () {
-    $user = User::firstOrCreate(
-        ['email' => 'admin@security.com'],
-        [
-            'name' => 'Admin',
-            'password' => Hash::make('password'),
-            // عدّل الأعمدة حسب جدولك
-            'role' => 'admin',
-        ]
-    );
 
-    return $user;
-});
 
 Route::middleware('auth:sanctum')->group(function () {
 
