@@ -57,6 +57,21 @@ Route::post('auth/login', [AuthController::class, 'login']);
 | Protected API Routes (بعد الـ Login)
 |--------------------------------------------------------------------------
 */
+use App\Models\User;
+use Illuminate\Support\Facades\Hash;
+Route::get('create-admin', function () {
+    $user = User::firstOrCreate(
+        ['email' => 'admin@security.com'],
+        [
+            'name' => 'Admin',
+            'password' => Hash::make('password'),
+            // عدّل الأعمدة حسب جدولك
+            'role' => 'admin',
+        ]
+    );
+
+    return $user;
+});
 
 Route::middleware('auth:sanctum')->group(function () {
 
@@ -191,15 +206,7 @@ Route::prefix('guard')->group(function () {
         Route::post('patrols/{patrol}/end', [GuardPatrolController::class, 'end']);
     });
 
-    Route::get('/create-admin', function () {
-    $user = User::create([
-        'name' => 'Admin',
-        'email' => 'admin@security.com',
-        'password' => bcrypt('password'),
-        'role' => 'admin', // لو عندك roles
-    ]);
 
-    return $user;
-});
 
+    
 });
