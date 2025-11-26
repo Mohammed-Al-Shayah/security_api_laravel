@@ -21,9 +21,7 @@ Route::get('create-admin', function () {
             [
                 'name'     => 'Admin',
                 'password' => Hash::make('password'),
-                // لو عندك أعمدة إلزامية ثانية في جدول users ضيفها هون
-                // مثال:
-                // 'type' => 'admin',
+                // لو عندك أعمدة إلزامية ثانية ضيفها هنا لاحقًا
             ]
         );
 
@@ -32,11 +30,10 @@ Route::get('create-admin', function () {
             'user'   => $user,
         ]);
     } catch (\Throwable $e) {
-        return response()->json([
-            'status'  => 'error',
-            'message' => $e->getMessage(),
-            'file'    => $e->getFile(),
-            'line'    => $e->getLine(),
-        ], 500);
+        dd(
+            $e->getMessage(),
+            $e->getFile(),
+            $e->getLine()
+        );
     }
 });
