@@ -130,81 +130,87 @@ class AttendanceController extends Controller
      * ========================================================= */
 public function guardCheckIn(Request $request)
 {
-    $user = $request->user();
+    try {
+        $user = $request->user();
 
-    // 1) لازم يكون في يوزر من التوكن
-    if (! $user) {
-        return $this->fail('No auth user found from token.', 401);
-    }
+        if (! $user) {
+            return $this->fail('No auth user found from token.', 401);
+        }
 
-    // 2) نتحقق من الدور بدل ما نعتمد على العلاقة
-    if ($user->role !== 'GUARD') {
-        return $this->fail('Only guards can perform check-in.', 403);
-    }
+        if ($user->role !== 'GUARD') {
+            return $this->fail('Only guards can perform check-in.', 403);
+        }
 
-    // 3) نضمن وجود Guard record لهذا اليوزر
-    $guard = Guard::firstOrCreate(
-        ['user_id' => $user->id],
-        [
-            'national_id'  => null,
-            'badge_number' => null,
-            'status'       => 'ACTIVE',
-        ]
-    );
+        // تأكد إنك عامل use App\Models\Guard; فوق
+        $guard = \App\Models\Guard::firstOrCreate(
+            ['user_id' => $user->id],
+            [
+                'national_id'  => null,
+                'badge_number' => null,
+                'status'       => 'ACTIVE',
+            ]
+        );
 
-    $guardId = $guard->id;
+        $guardId = $guard->id;
 
-    // 4) Validate البودي
-    $data = $request->validate([
-        'shift_id' => 'required|exists:shifts,id',
-        'lat'      => 'nullable|numeric',
-        'lng'      => 'nullable|numeric',
-    ]);
+        $data = $request->validate([
+            'shift_id' => 'required|exists:shifts,id',
+            'lat'      => 'nullable|numeric',
+            'lng'      => 'nullable|numeric',
+        ]);
 
-    // 5) نتأكد إن الشيفت لهذا الحارس
-    $shift = Shift::where('id', $data['shift_id'])
-        ->where('guard_id', $guardId)
-        ->first();
+        $shift = \App\Models\Shift::where('id', $data['shift_id'])
+            ->where('guard_id', $guardId)
+            ->first();
 
-    if (! $shift) {
-        return $this->fail('Guard does not belong to this shift.', 422);
-    }
+        if (! $shift) {
+            return $this->fail('Guard does not belong to this shift.', 422);
+        }
 
-    // 6) نجيب أو ننشئ سجل حضور
-    $attendance = Attendance::firstOrCreate(
-        [
-            'shift_id' => $shift->id,
-            'guard_id' => $guardId,
-        ],
-        []
-    );
+        $attendance = \App\Models\Attendance::firstOrCreate(
+            [
+                'shift_id' => $shift->id,
+                'guard_id' => $guardId,
+            ],
+            []
+        );
 
-    // لو عامل تشيك إن قبل
-    if ($attendance->check_in_time) {
+        if ($attendance->check_in_time) {
+            $attendance->load('shift.project', 'guard.user');
+            return $this->success($attendance, 'Already checked in.');
+        }
+
+        $now = now();
+
+        $attendance->check_in_time = $now;
+        $attendance->check_in_lat  = $data['lat'] ?? null;
+        $attendance->check_in_lng  = $data['lng'] ?? null;
+
+        $shiftStart = \Carbon\Carbon::parse($shift->date.' '.$shift->start_time);
+
+        if ($now->greaterThan($shiftStart->copy()->addMinutes($this->lateToleranceMinutes))) {
+            $attendance->status = 'LATE';
+        } else {
+            $attendance->status = 'ON_TIME';
+        }
+
+        $attendance->save();
+
         $attendance->load('shift.project', 'guard.user');
-        return $this->success($attendance, 'Already checked in.');
+
+        return $this->success($attendance, 'Check-in recorded.');
+    } catch (\Throwable $e) {
+        // 👈 هنا رح يطلعلك سبب الـ 500 بدل "Server Error"
+        return $this->fail(
+            'DEBUG ERROR {guardCheckIn}',
+            500,
+            [
+                'error' => $e->getMessage(),
+                'file'  => $e->getFile(),
+                'line'  => $e->getLine(),
+            ]
+        );
     }
-
-    // 7) نسجّل التشيك إن
-    $now = now();
-
-    $attendance->check_in_time = $now;
-    $attendance->check_in_lat  = $data['lat'] ?? null;
-    $attendance->check_in_lng  = $data['lng'] ?? null;
-
-    $shiftStart = Carbon::parse($shift->date.' '.$shift->start_time);
-
-    if ($now->greaterThan($shiftStart->copy()->addMinutes($this->lateToleranceMinutes))) {
-        $attendance->status = 'LATE';
-    } else {
-        $attendance->status = 'ON_TIME';
-    }
-
-    $attendance->save();
-
-    $attendance->load('shift.project', 'guard.user');
-
-    return $this->success($attendance, 'Check-in recorded.');
 }
 
 
