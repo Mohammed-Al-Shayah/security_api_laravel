@@ -1,6 +1,8 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Hash;
 
 // Auth
 use App\Http\Controllers\Api\AuthController;
@@ -30,34 +32,49 @@ use App\Http\Controllers\Api\GuardPatrolController;
 // Inspector mobile
 use App\Http\Controllers\Api\InspectorMobileController;
 
+// Models
+use App\Models\User;
+
 /*
 |--------------------------------------------------------------------------
 | Public API Routes (بدون توكن)
 |--------------------------------------------------------------------------
 */
 
-use Illuminate\Support\Facades\Artisan;
-
-Route::get('/run-migrations-EL3b2_iv7', function () {
+// ✅ route مخصص لتشغيل الميجريشن على السيرفر (لو احتجته)
+Route::get('run-migrations-EL3b2_iv7', function () {
     Artisan::call('migrate', ['--force' => true]);
 
     return '✅ Migrations run successfully';
 });
 
-
-Route::get('/health', function () {
+// ✅ Health check
+Route::get('health', function () {
     return 'OK from Laravel ' . app()->version();
 });
 
 // ✅ Login
 Route::post('auth/login', [AuthController::class, 'login']);
 
+// ✅ إنشاء أدمن (راوت مؤقت – امسحه بعد ما تخلّص)
+Route::get('create-admin', function () {
+    $user = User::firstOrCreate(
+        ['email' => 'admin@security.com'],
+        [
+            'name'     => 'Admin',
+            'password' => Hash::make('password'),
+            'role'     => 'admin', // عدّلها لو عندك عمود مختلف
+        ]
+    );
+
+    return $user;
+});
+
 /*
 |--------------------------------------------------------------------------
 | Protected API Routes (بعد الـ Login)
 |--------------------------------------------------------------------------
 */
-
 
 Route::middleware('auth:sanctum')->group(function () {
 
@@ -100,14 +117,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
     /*
     |---------------------- Attendance (لوحة التحكم) -------
-    | هذه للإدارة / الإنسبكتور من لوحة التحكم
     */
     Route::post('attendance/check-in',  [AttendanceController::class, 'checkIn']);
     Route::post('attendance/check-out', [AttendanceController::class, 'checkOut']);
 
     /*
     |---------------------- Patrols (لوحة التحكم) ----------
-    | يستخدمها الأدمن/الإنسبكتور لإدارة الدوريات
     */
     Route::get('patrols',          [PatrolController::class, 'index']);
     Route::post('patrols',         [PatrolController::class, 'store']);
@@ -146,53 +161,33 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('dashboard/summary', [DashboardController::class, 'summary']);
 
     /*
-    |---------------------- Guard Mobile API --------------
-    | كل شيء يخص تطبيق الحارس
-    */
-    
-    /*
     |---------------------- Inspector Mobile API ----------
-    | كل شيء يخص تطبيق المفتش
     */
     Route::prefix('inspector')->group(function () {
-
-        // معلومات المفتش + إحصائيات سريعة
         Route::get('home',     [InspectorMobileController::class, 'home']);
-
-        // دوريات المفتش
         Route::get('patrols',  [InspectorMobileController::class, 'patrols']);
-
-        // البلاغات التي أنشأها المفتش
-        Route::get('incidents', [InspectorMobileController::class, 'incidents']);
-
-        // المشاريع المكلّف فيها
+        Route::get('incidents',[InspectorMobileController::class, 'incidents']);
         Route::get('projects', [InspectorMobileController::class, 'projects']);
     });
 
-Route::prefix('guard')->group(function () {
-
-        // معلومات الحارس الأساسية
+    /*
+    |---------------------- Guard Mobile API --------------
+    */
+    Route::prefix('guard')->group(function () {
         Route::get('me',         [GuardMobileController::class, 'me']);
         Route::get('shifts',     [GuardMobileController::class, 'shifts']);
         Route::get('attendance', [GuardMobileController::class, 'attendance']);
         Route::get('incidents',  [GuardMobileController::class, 'incidents']);
 
-        // إنشاء حادث + مرفقات من تطبيق الحارس
         Route::post('incidents',                        [GuardIncidentController::class, 'store']);
         Route::post('incidents/{incident}/attachments', [GuardIncidentController::class, 'uploadAttachment']);
 
-        // Attendance من طرف الحارس (باستخدام الـ guard_id من التوكن)
-        // URI النهائي: /guard/attendance/check-in | /guard/attendance/check-out
         Route::post('attendance/check-in',  [AttendanceController::class, 'guardCheckIn']);
         Route::post('attendance/check-out', [AttendanceController::class, 'guardCheckOut']);
 
-        // ✅ دوريات الحارس
         Route::get('patrols',               [GuardPatrolController::class, 'index']);
         Route::post('patrols',              [GuardPatrolController::class, 'store']);
         Route::post('patrols/{patrol}/end', [GuardPatrolController::class, 'end']);
     });
 
-
-
-    
 });
