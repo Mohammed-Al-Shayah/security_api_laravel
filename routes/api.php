@@ -56,23 +56,23 @@ Route::get('health', function () {
 // ✅ Login
 Route::post('auth/login', [AuthController::class, 'login']);
 
-// ✅ إنشاء أدمن (راوت مؤقت – امسحه بعد ما تخلّص)
-Route::get('create-admin', function () {
-    $user = User::updateOrCreate(
-        ['email' => 'admin@security.com'],
-        [
-            'name'     => 'Admin',
-            'password' => Hash::make('password'),
-            // لو عندك أعمدة إلزامية ثانية في جدول users ضيفها هنا
-            // مثلاً: 'type' => 'admin',
-        ]
-    );
+// // ✅ إنشاء أدمن (راوت مؤقت – امسحه بعد ما تخلّص)
+// Route::get('create-admin', function () {
+//     $user = User::updateOrCreate(
+//         ['email' => 'admin@security.com'],
+//         [
+//             'name'     => 'Admin',
+//             'password' => Hash::make('password'),
+//             // لو عندك أعمدة إلزامية ثانية في جدول users ضيفها هنا
+//             // مثلاً: 'type' => 'admin',
+//         ]
+//     );
 
-    return response()->json([
-        'status' => 'ok',
-        'user'   => $user,
-    ]);
-});
+//     return response()->json([
+//         'status' => 'ok',
+//         'user'   => $user,
+//     ]);
+// });
 
 /*
 |--------------------------------------------------------------------------
