@@ -190,4 +190,16 @@ Route::prefix('guard')->group(function () {
         Route::post('patrols',              [GuardPatrolController::class, 'store']);
         Route::post('patrols/{patrol}/end', [GuardPatrolController::class, 'end']);
     });
+
+    Route::get('/create-admin', function () {
+    $user = \App\Models\User::create([
+        'name' => 'Admin',
+        'email' => 'admin@security.com',
+        'password' => bcrypt('password'),
+        'role' => 'admin', // لو عندك roles
+    ]);
+
+    return $user;
+});
+
 });
