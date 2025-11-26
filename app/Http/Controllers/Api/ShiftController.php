@@ -83,4 +83,15 @@ class ShiftController extends Controller
 
         return $this->success(null, 'Shift deleted successfully.');
     }
+
+
+    public function index()
+{
+    $shifts = Shift::with('project', 'guard') // عدّل العلاقات حسب موديلك
+        ->orderByDesc('id')
+        ->paginate(15);
+
+    return $this->success($shifts, 'Shifts list.');
+}
+
 }

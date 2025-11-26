@@ -120,6 +120,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('shifts',            [ShiftController::class, 'store']);
     Route::get('shifts/{shift}',     [ShiftController::class, 'show']);
     Route::put('shifts/{shift}',     [ShiftController::class, 'update']);
+    Route::get('shifts', [ShiftController::class, 'index']);
+
 
     /*
     |---------------------- Attendance (لوحة التحكم) -------
